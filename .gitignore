@@ -1,5 +1,5 @@
 .DS_Store
-checkpoint/*
+checkpoint
 png
 *.pyc
 *.so
