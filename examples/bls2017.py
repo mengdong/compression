@@ -32,7 +32,10 @@ import argparse
 import numpy as np
 import tensorflow as tf
 import tensorflow_compression as tfc
+from tensorflow.python.client import timeline
 
+options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+run_metadata = tf.RunMetadata()
 
 def load_image(filename):
   """Loads a PNG image file."""
@@ -161,9 +164,16 @@ def train():
   ]
   with tf.train.MonitoredTrainingSession(
       hooks=hooks, checkpoint_dir=args.checkpoint_dir) as sess:
+    profiler_index = 0
     while not sess.should_stop():
-      sess.run(train_op)
-
+      #sess.run(train_op)
+      #####
+      sess.run(train_op, options=options, run_metadata=run_metadata)
+      fetched_timeline = timeline.Timeline(run_metadata.step_stats)
+      chrome_trace = fetched_timeline.generate_chrome_trace_format()
+      with open('timeline_train_step%d.json' % profiler_index, 'w') as f:
+        f.write(chrome_trace)
+      #####
 
 def compress():
   """Compresses an image."""
@@ -198,7 +208,15 @@ def compress():
     # shapes.
     latest = tf.train.latest_checkpoint(checkpoint_dir=args.checkpoint_dir)
     tf.train.Saver().restore(sess, save_path=latest)
-    string, x_shape, y_shape = sess.run([string, tf.shape(x), tf.shape(y)])
+    # string, x_shape, y_shape = sess.run([string, tf.shape(x), tf.shape(y)])
+    #####
+    string, x_shape, y_shape = sess.run([string, tf.shape(x), tf.shape(y)], options=options, run_metadata=run_metadata)
+    fetched_timeline = timeline.Timeline(run_metadata.step_stats)
+    chrome_trace = fetched_timeline.generate_chrome_trace_format()
+    with open('timeline_compress.json', 'w') as f:
+        f.write(chrome_trace)
+    #####
+
 
     # Write a binary file with the shape information and the compressed string.
     with open(args.output, "wb") as f:
@@ -247,7 +265,15 @@ def decompress():
   with tf.Session() as sess:
     latest = tf.train.latest_checkpoint(checkpoint_dir=args.checkpoint_dir)
     tf.train.Saver().restore(sess, save_path=latest)
-    sess.run(op)
+    # sess.run(op)
+    #####
+    sess.run(op, options=options, run_metadata=run_metadata)
+    fetched_timeline = timeline.Timeline(run_metadata.step_stats)
+    chrome_trace = fetched_timeline.generate_chrome_trace_format()
+    with open('timeline_decompress.json', 'w') as f:
+        f.write(chrome_trace)
+    #####
+
 
 
 if __name__ == "__main__":

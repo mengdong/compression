@@ -1,4 +1,6 @@
 .DS_Store
+checkpoint/*
+png
 *.pyc
 *.so
 *~
